@@ -18,6 +18,13 @@ These are actual screenshots of the running application with the development cat
 | ---------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
 | <img src="docs/screenshots/home.png" width="215" alt="Griper home with campaigns and product collections"> | <img src="docs/screenshots/category.png" width="215" alt="Category sidebar, search and product grid"> | <img src="docs/screenshots/product.png" width="215" alt="Product gallery, pricing and shopping bag actions"> | <img src="docs/screenshots/me.png" width="215" alt="Personal account, wishlist, orders and preferences"> |
 
+<details>
+<summary>Home loading state</summary>
+
+<img src="docs/screenshots/home-loading.png" width="215" alt="Storefront loading skeleton at a phone viewport">
+
+</details>
+
 [Reference analysis and screen mapping](docs/reference-analysis.md)
 
 <details>

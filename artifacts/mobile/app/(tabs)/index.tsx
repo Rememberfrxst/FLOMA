@@ -7,6 +7,8 @@ import {
   RefreshControl,
   useWindowDimensions,
 } from "react-native";
+import { useQueryClient } from "@tanstack/react-query";
+import { HomeSkeleton } from "@/components/HomeSkeleton";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
@@ -37,6 +39,8 @@ export default function Home() {
     desktop = useDesktopWeb(),
     store = useStorefront(),
     offers = useOffers();
+  const cache = useQueryClient();
+  const [opened, setOpened] = useState(false);
   const requestSequence = useRef(0);
   const [cats, setCats] = useState<ApiCategory[]>([]),
     [banners, setBanners] = useState<ApiBanner[]>([]),
@@ -63,19 +67,30 @@ export default function Home() {
     setLoading(true);
     setError(false);
     try {
-      const [p, cat, b, n, top] = await Promise.all([
+      const [p, cat, b] = await Promise.all([
         api.products.list({ ...params, limit: 20 }),
-        api.categories.list(),
+        cache.fetchQuery({ queryKey: ["home-categories"], queryFn: () => api.categories.list(), staleTime: 30_000 }),
         api.banners.list(),
-        api.products.list({ category: active, sort: "newest", limit: 4 }),
-        api.products.list({ category: active, sort: "popular", limit: 4 }),
+
       ]);
       if (sequence !== requestSequence.current) return;
       setProducts(p.data);
       setCats(cat);
       setBanners(b);
-      setNewest(n.data);
-      setBest(top.data);
+      setOpened(true);
+      setNewest([]);
+      setBest([]);
+      const shelf = (sort: string) => api.products.list({ category: active, sort, limit: 4 });
+      void shelf("newest").then(n => {
+        if (sequence === requestSequence.current) setNewest(n.data);
+      }).catch(() => {});
+      if (filters.sort === "popular" && filters.minPrice === undefined && filters.maxPrice === undefined && !filters.inStock) {
+        setBest(p.data.slice(0, 4));
+      } else {
+        void shelf("popular").then(n => {
+          if (sequence === requestSequence.current) setBest(n.data);
+        }).catch(() => {});
+      }
       setPage(1);
       setMore(p.data.length === 20);
     } catch {
@@ -85,6 +100,7 @@ export default function Home() {
     }
   }, [
     active,
+    cache,
     filters.sort,
     filters.minPrice,
     filters.maxPrice,
@@ -150,14 +166,14 @@ export default function Home() {
         <Text
           style={{
             fontSize: 15,
-            color: c.foreground,
+            color: "#fff",
             fontFamily: "GoogleSans_700Bold",
             fontStyle: "italic",
           }}
         >
           {title}
         </Text>
-        <Icon name="chevron-forward" size={20} />
+        <Icon name="chevron-forward" color="#fff" size={20} />
       </View>
       <View style={{ flexDirection: "row", gap: 3 }}>
         {list.slice(0, 2).map((p) => (
@@ -177,7 +193,7 @@ export default function Home() {
             />
             <Text
               style={{
-                color: c.accent,
+                color: "#fff",
                 fontFamily: "GoogleSans_700Bold",
                 fontSize: 14,
                 marginTop: 8,
@@ -191,6 +207,8 @@ export default function Home() {
       </View>
     </TouchableOpacity>
   );
+  if (!opened && loading) return <HomeSkeleton />;
+  const offer = offers[0];
   return (
     <ScrollView
       testID="home-screen"
@@ -258,75 +276,10 @@ export default function Home() {
         )}
       </View>
       <View style={desktop ? s.desktopContent : undefined}>
-      <View
-        style={[
-          s.benefits,
-          desktop && s.desktopBenefits,
-          { backgroundColor: "#FFF2D9", borderColor: "#F3DEC0" },
-        ]}
-      >
-        <TouchableOpacity
-          accessibilityRole="button"
-          onPress={() =>
-            router.push({ pathname: "/help", params: { section: "shipping" } })
-          }
-          style={s.benefit}
-        >
-          <Icon name="car" size={17} color="#773E17" />
-          <View>
-            <Text style={s.benefitTitle}>Free Shipping</Text>
-            <Text style={s.benefitSub}>
-              Orders from ₹{store.freeShippingThreshold}*
-            </Text>
-          </View>
-        </TouchableOpacity>
-        <View style={{ height: 32, width: 1, backgroundColor: "#C6A47D" }} />
-        <TouchableOpacity
-          accessibilityRole="button"
-          onPress={() =>
-            router.push({ pathname: "/help", params: { section: "returns" } })
-          }
-          style={s.benefit}
-        >
-          <Icon name="return-down-back" size={17} color="#773E17" />
-          <View style={{ flex: 1 }}>
-            <Text numberOfLines={1} style={s.benefitTitle}>
-              {store.returnsHeadline}
-            </Text>
-            <Text style={s.benefitSub}>Customer care is here to help</Text>
-          </View>
-        </TouchableOpacity>
-      </View>
-      <TouchableOpacity
-        accessibilityRole="button"
-        onPress={() =>
-          offers.length
-            ? router.push("/offers")
-            : browse("popular", "Exclusive Picks")
-        }
-        style={[s.exclusive, desktop && s.desktopExclusive]}
-      >
-        <View style={{ flex: 1 }}>
-          <Text style={s.exclusiveTitle}>
-            {store.storeName.toUpperCase()} Exclusive Picks
-          </Text>
-          <Text numberOfLines={2} style={s.exclusiveSub}>
-            {store.announcement}
-          </Text>
-        </View>
-        <View style={s.exclusiveCta}>
-          <Text
-            style={{
-              color: "#C84267",
-              fontSize: 9,
-              fontFamily: "GoogleSans_700Bold",
-              textAlign: "center",
-            }}
-          >
-            {offers.length ? "SHOP\nSTORE OFFERS" : "EXPLORE\nTHE PICKS"}
-          </Text>
-        </View>
-      </TouchableOpacity>
+      {offer && <TouchableOpacity accessibilityRole="button" onPress={() => router.push("/offers")} style={s.deal}>
+        <Text style={s.dealTitle}>{offer.discountType === "percentage" ? Number(offer.discountValue) + "%" : formatPrice(Number(offer.discountValue))} OFF*</Text>
+        <Text style={s.dealCode}>{offer.code}  ›</Text>
+      </TouchableOpacity>}
       <View
         style={[
           s.categoryGrid,
@@ -391,6 +344,45 @@ export default function Home() {
           </Text>
         </TouchableOpacity>
       </View>
+      <View
+        style={[
+          s.benefits,
+          desktop && s.desktopBenefits,
+          { backgroundColor: "#FFF2D9", borderColor: "#F3DEC0" },
+        ]}
+      >
+        <TouchableOpacity
+          accessibilityRole="button"
+          onPress={() =>
+            router.push({ pathname: "/help", params: { section: "shipping" } })
+          }
+          style={s.benefit}
+        >
+          <Icon name="car" size={17} color="#773E17" />
+          <View>
+            <Text style={s.benefitTitle}>Free Shipping</Text>
+            <Text style={s.benefitSub}>
+              Orders from ₹{store.freeShippingThreshold}*
+            </Text>
+          </View>
+        </TouchableOpacity>
+        <View style={{ height: 32, width: 1, backgroundColor: "#C6A47D" }} />
+        <TouchableOpacity
+          accessibilityRole="button"
+          onPress={() =>
+            router.push({ pathname: "/help", params: { section: "returns" } })
+          }
+          style={s.benefit}
+        >
+          <Icon name="return-down-back" size={17} color="#773E17" />
+          <View style={{ flex: 1 }}>
+            <Text numberOfLines={1} style={s.benefitTitle}>
+              {store.returnsHeadline}
+            </Text>
+            <Text style={s.benefitSub}>Customer care is here to help</Text>
+          </View>
+        </TouchableOpacity>
+      </View>
       {roots.length > 0 && (
         <ScrollView
           horizontal={!desktop}
@@ -439,12 +431,12 @@ export default function Home() {
       )}
       {(newest.length > 0 || best.length > 0) && (
         <View style={[s.collections, desktop && s.desktopCollections, { backgroundColor: c.muted }]}>
-          {collection("New Arrivals", newest, "newest", c.secondary)}
-          {collection(
+          {newest.length > 0 && collection("New Arrivals", newest, "newest", "#76182B")}
+          {best.length > 0 && collection(
             "Best Sellers",
             best,
             "popular",
-            c.background === "#FFFFFF" ? "#FFF0F0" : c.secondary,
+            "#221A20",
           )}
         </View>
       )}
@@ -533,6 +525,9 @@ export default function Home() {
   );
 }
 const s = StyleSheet.create({
+  deal: { backgroundColor: "#D7FA39", paddingHorizontal: 16, paddingVertical: 7, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 14 },
+  dealTitle: { color: "#191B12", fontFamily: "GoogleSans_700Bold", fontSize: 21, fontStyle: "italic" },
+  dealCode: { color: "#fff", backgroundColor: "#202020", paddingHorizontal: 9, paddingVertical: 3, fontFamily: "GoogleSans_700Bold", fontSize: 12 },
   heroHeader: { position: "absolute", top: 0, left: 0, right: 0 },
   desktopContent: { width: "100%", maxWidth: 1280, alignSelf: "center" },
   benefits: {
@@ -564,28 +559,6 @@ const s = StyleSheet.create({
     fontFamily: "GoogleSans_700Bold",
   },
   benefitSub: { fontSize: 10, color: "#864718", marginTop: 2 },
-  exclusive: {
-    backgroundColor: "#FFF0F5",
-    paddingHorizontal: 14,
-    paddingVertical: 11,
-    flexDirection: "row",
-    gap: 12,
-    alignItems: "center",
-    marginTop: 3,
-  },
-  desktopExclusive: { marginTop: 0, paddingHorizontal: 26, paddingVertical: 19 },
-  exclusiveTitle: {
-    fontSize: 14,
-    fontFamily: "GoogleSans_700Bold",
-    color: "#D84570",
-  },
-  exclusiveSub: { fontSize: 9, color: "#D66787", marginTop: 3 },
-  exclusiveCta: {
-    borderWidth: 1,
-    borderColor: "#D84570",
-    borderRadius: 4,
-    padding: 7,
-  },
   categoryGrid: {
     flexDirection: "row",
     flexWrap: "wrap",

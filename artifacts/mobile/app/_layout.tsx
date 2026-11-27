@@ -73,7 +73,7 @@ function RootLayoutNav() {
 }
 
 export default function RootLayout() {
-  const [fontsLoaded, fontError] = useFonts({
+  useFonts({
     // Google Sans — used everywhere in the app
     GoogleSans_400Regular,
     GoogleSans_500Medium,
@@ -86,10 +86,8 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
-    if (fontsLoaded || fontError) SplashScreen.hideAsync();
-  }, [fontsLoaded, fontError]);
-
-  if (!fontsLoaded && !fontError) return null;
+    void SplashScreen.hideAsync();
+  }, []);
 
   return (
     <SafeAreaProvider>

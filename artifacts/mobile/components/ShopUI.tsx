@@ -128,7 +128,7 @@ export function ProductGrid({
   desktop?: boolean;
 }) {
   const w = useWishlist();
-  const itemWidth = `${(100 - Math.max(0, columns - 1) * 1.25) / columns}%`;
+  const itemWidth: `${number}%` = `${(100 - Math.max(0, columns - 1) * 1.25) / columns}%`;
   return (
     <View style={[s.grid, desktop && s.desktopGrid]}>
       {products.map((p) => (

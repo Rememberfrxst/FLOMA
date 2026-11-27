@@ -56,13 +56,17 @@ export default function CampaignCarousel({
             activeOpacity={0.96}
             style={{ width, height, backgroundColor: "#333" }}
           >
+            {b.imageUrl.includes("/photo-1445205170230-053b83016050") && (
+              <Image source={require("../assets/images/season-fashion.jpg")} style={StyleSheet.absoluteFill} contentFit="cover" />
+            )}
             <Image
               source={{ uri: b.imageUrl }}
               style={StyleSheet.absoluteFill}
               contentFit="cover"
             />
             <LinearGradient
-              colors={["rgba(0,0,0,.4)", "rgba(0,0,0,.05)", "rgba(0,0,0,.4)"]}
+              start={{ x: 0, y: 1 }} end={{ x: 1, y: 0 }}
+              colors={["rgba(62,2,17,.96)", "rgba(92,12,33,.55)", "rgba(40,5,14,.16)"]}
               style={StyleSheet.absoluteFill}
             />
             <View
@@ -141,8 +145,9 @@ const s = StyleSheet.create({
     maxWidth: 300,
   },
   title: {
-    fontSize: 28,
-    lineHeight: 30,
+    fontSize: 36,
+    lineHeight: 36,
+    letterSpacing: -1.5,
     color: "#fff",
     fontFamily: "GoogleSans_700Bold",
   },
@@ -155,7 +160,7 @@ const s = StyleSheet.create({
   },
   cta: {
     alignSelf: "flex-start",
-    backgroundColor: "#111",
+    backgroundColor: "#751833",
     paddingVertical: 7,
     paddingHorizontal: 12,
     marginTop: 12,
